@@ -8,6 +8,19 @@
 
 [이전 모션 게임](https://github.com/DaegunManga/motion-game)의 업그레이드 버전
 
+## 인터페이스
+
+### 로비 화면
+![로비 화면](./images/lobby.png)
+
+### 게임 화면
+![게임 화면](./images/play.png)
+
+### 오버 화면
+![오벼 화면](./images/over.png)
+
+
+
 ## 주요 기능
 
 - **실시간 포즈 인식**: MediaPipe를 사용하여 플레이어의 어깨 좌표를 실시간으로 감지한다

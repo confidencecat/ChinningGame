@@ -11,16 +11,13 @@ class Player:
         self.velocity = 0
         self.rect = pygame.Rect(x, y, PLAYER_SIZE, PLAYER_SIZE)
         
-        # Load and scale bird image
         try:
             original_bird = pygame.image.load(BIRD_IMAGE)
             self.image = pygame.transform.scale(original_bird, (PLAYER_SIZE, PLAYER_SIZE))
         except:
-            # Fallback to colored rectangle if image not found
             self.image = pygame.Surface((PLAYER_SIZE, PLAYER_SIZE))
             self.image.fill(YELLOW)
         
-        # MediaPipe setup
         self.mp_pose = mp.solutions.pose
         self.pose = self.mp_pose.Pose(
             static_image_mode=False,
@@ -31,16 +28,13 @@ class Player:
         )
         self.mp_draw = mp.solutions.drawing_utils
         
-        # Camera setup
         self.cap = None
         self.camera_active = False
         
-        # Pose detection variables
         self.shoulder_center_y = GAME_HEIGHT // 2
         self.pose_detected = False
         
     def init_camera(self, camera_index=0):
-        """Initialize camera with specified index"""
         try:
             self.cap = cv2.VideoCapture(camera_index)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
@@ -52,7 +46,6 @@ class Player:
             return False
     
     def update_pose(self):
-        """Update player position based on pose detection"""
         if not self.camera_active or self.cap is None:
             return None
             
@@ -60,39 +53,31 @@ class Player:
         if not ret:
             return None
             
-        # Flip frame horizontally for mirror effect
         frame = cv2.flip(frame, 1)
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
-        # Process pose
         results = self.pose.process(rgb_frame)
         
         if results.pose_landmarks:
             landmarks = results.pose_landmarks.landmark
             
-            # Get shoulder landmarks
             left_shoulder = landmarks[self.mp_pose.PoseLandmark.LEFT_SHOULDER]
             right_shoulder = landmarks[self.mp_pose.PoseLandmark.RIGHT_SHOULDER]
             
-            # Calculate center of shoulders
             shoulder_center_x = (left_shoulder.x + right_shoulder.x) / 2
             shoulder_center_y = (left_shoulder.y + right_shoulder.y) / 2
             
-            # Convert to screen coordinates
             screen_y = int(shoulder_center_y * GAME_HEIGHT)
             
-            # Smooth movement
             if self.pose_detected:
                 self.shoulder_center_y = self.shoulder_center_y * 0.8 + screen_y * 0.2
             else:
                 self.shoulder_center_y = screen_y
                 self.pose_detected = True
             
-            # Draw landmarks on frame
             self.mp_draw.draw_landmarks(
                 frame, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS)
             
-            # Draw center point
             center_x = int(shoulder_center_x * CAMERA_WIDTH)
             center_y = int(shoulder_center_y * CAMERA_HEIGHT)
             cv2.circle(frame, (center_x, center_y), 10, (0, 255, 0), -1)
@@ -102,17 +87,13 @@ class Player:
         return frame
     
     def update(self):
-        """Update player physics"""
         if self.pose_detected:
-            # Use pose-based positioning
             target_y = self.shoulder_center_y
-            self.y = self.y * 0.9 + target_y * 0.1  # Smooth interpolation
+            self.y = self.y * 0.9 + target_y * 0.1
         else:
-            # Fallback to gravity-based movement
             self.velocity += GRAVITY
             self.y += self.velocity
         
-        # Keep player on screen
         if self.y < 0:
             self.y = 0
             self.velocity = 0
@@ -123,30 +104,25 @@ class Player:
         self.rect.y = int(self.y)
     
     def jump(self):
-        """Manual jump (fallback for keyboard control)"""
         if not self.pose_detected:
             self.velocity = JUMP_STRENGTH
     
     def draw(self, screen):
-        """Draw player on screen with enhanced design"""
-        # Draw shadow
         shadow_offset = 3
         shadow_rect = pygame.Rect(self.x + shadow_offset, int(self.y) + shadow_offset, PLAYER_SIZE, PLAYER_SIZE)
         pygame.draw.ellipse(screen, (50, 50, 50, 100), shadow_rect)
         
-        # Draw bird with rotation based on velocity
         angle = max(-30, min(30, self.velocity * 3))
         rotated_image = pygame.transform.rotate(self.image, angle)
         rotated_rect = rotated_image.get_rect(center=(self.x + PLAYER_SIZE//2, int(self.y) + PLAYER_SIZE//2))
         screen.blit(rotated_image, rotated_rect)
         
-        # Draw wing flap effect
         if hasattr(self, 'flap_animation'):
             self.flap_animation += 1
         else:
             self.flap_animation = 0
             
-        if self.flap_animation % 20 < 10:  # Wing flap animation
+        if self.flap_animation % 20 < 10:
             wing_color = (255, 255, 255, 150)
             wing_points = [
                 (self.x - 10, int(self.y) + PLAYER_SIZE//2),
@@ -156,17 +132,13 @@ class Player:
             ]
             pygame.draw.polygon(screen, WHITE, wing_points)
         
-        # Draw pose detection status with fancy indicator
         indicator_x, indicator_y = 50, 50
         
-        # Background circle
         pygame.draw.circle(screen, WHITE, (indicator_x, indicator_y), 20)
         pygame.draw.circle(screen, BLACK, (indicator_x, indicator_y), 20, 3)
         
         if self.pose_detected:
-            # Green checkmark
             pygame.draw.circle(screen, LIME_GREEN, (indicator_x, indicator_y), 15)
-            # Checkmark symbol
             check_points = [
                 (indicator_x - 6, indicator_y),
                 (indicator_x - 2, indicator_y + 4),
@@ -174,13 +146,10 @@ class Player:
             ]
             pygame.draw.lines(screen, WHITE, False, check_points, 3)
         else:
-            # Red X
             pygame.draw.circle(screen, RED, (indicator_x, indicator_y), 15)
-            # X symbol
             pygame.draw.line(screen, WHITE, (indicator_x - 6, indicator_y - 6), (indicator_x + 6, indicator_y + 6), 3)
             pygame.draw.line(screen, WHITE, (indicator_x + 6, indicator_y - 6), (indicator_x - 6, indicator_y + 6), 3)
         
     def cleanup(self):
-        """Clean up camera resources"""
         if self.cap:
             self.cap.release()
